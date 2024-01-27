@@ -7,7 +7,7 @@
     "build": "tsc && lessc ./src/videojs.markers.less ./dist/videojs.markers.css"
   },
   "peerDependencies": {
-    "video.js": ">=6.0.0"
+    "video.js": ">=8.0.0"
   },
   "devDependencies": {
     "@types/video.js": "^7.3.56",
