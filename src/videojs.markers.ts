@@ -7,7 +7,7 @@ import videojs from 'video.js';
 import Player from 'video.js/dist/types/player';
 import VideoJsPlugin from 'video.js/dist/types/plugin'
 import OrderedMap from './OrderedMap';
-
+1
 export type Marker = {
     time: number,
     duration: number,
@@ -16,7 +16,7 @@ export type Marker = {
     overlayText?: string,
 };
 
-type MarkerInternal = Marker & { readonly key: string }; // private property 'key'
+type MarkerInternal = Marker & { readonly key: string };
 
 export type Settings = {
     markerStyle: Partial<CSSStyleDeclaration>,
@@ -24,12 +24,6 @@ export type Settings = {
         display: boolean,
         text: (m: Marker) => string,
         time: (m: Marker) => number
-    },
-    breakOverlay: Partial<Omit<HTMLElement, 'style'>> & {
-        display: boolean,
-        displayTime: number,
-        text: (m: Marker) => string,
-        style: Partial<CSSStyleDeclaration>,
     },
     onMarkerClick: (m: Marker) => void,
     onMarkerReached: (m: Marker, i: number) => void,
@@ -524,10 +518,17 @@ export class MarkersPlugin extends VideoJsPlugin {
         super(player);
 
         this.settings = videojs.obj.merge(DEFAULT_SETTINGS, options)
-
         this.markersMap = new OrderedMap<string, MarkerInternal>((v1, v2) => {
             return this.settings.markerTip.time(v1) - this.settings.markerTip.time(v2)
         });
+
+        if (this.settings.markerTip.display) {
+            const markerTip = videojs.dom.createEl('div', {
+                className: 'vjs-tip',
+                innerHTML: "<div class='vjs-tip-arrow'></div><div class='vjs-tip-inner'></div>",
+            }) as HTMLElement;
+            player.$('.vjs-progress-holder')?.appendChild(markerTip);
+        }
     }
 
     public getMarkers(): Array<Marker> {
