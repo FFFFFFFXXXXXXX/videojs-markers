@@ -6,23 +6,41 @@
 import videojs from 'video.js';
 import Player from 'video.js/dist/types/player';
 import VideoJsPlugin from 'video.js/dist/types/plugin'
+import OrderedMap from './OrderedMap';
 
-type Marker = {
+export type Marker = {
     time: number,
     duration: number,
     text?: string,
     class?: string,
     overlayText?: string,
-    // private property
-    key: string,
 };
 
+type MarkerInternal = Marker & { readonly key: string }; // private property 'key'
+
+export type Settings = {
+    markerStyle: Partial<CSSStyleDeclaration>,
+    markerTip: Partial<HTMLElement> & {
+        display: boolean,
+        text: (m: Marker) => string,
+        time: (m: Marker) => number
+    },
+    breakOverlay: Partial<Omit<HTMLElement, 'style'>> & {
+        display: boolean,
+        displayTime: number,
+        text: (m: Marker) => string,
+        style: Partial<CSSStyleDeclaration>,
+    },
+    onMarkerClick: (m: Marker) => void,
+    onMarkerReached: (m: Marker, i: number) => void,
+}
+
 // default setting
-const defaultSetting = {
+const DEFAULT_SETTINGS: Settings = {
     markerStyle: {
         'width': '7px',
-        'border-radius': '30%',
-        'background-color': 'red',
+        'borderRadius': '30%',
+        'backgroundColor': 'red',
     },
     markerTip: {
         display: true,
@@ -36,31 +54,19 @@ const defaultSetting = {
         style: {
             'width': '100%',
             'height': '20%',
-            'background-color': 'rgba(0,0,0,0.7)',
+            'backgroundColor': 'rgba(0,0,0,0.7)',
             'color': 'white',
-            'font-size': '17px',
+            'fontSize': '17px',
         },
     },
     onMarkerClick: (_marker: Marker): void => { },
     onMarkerReached: (_marker: Marker, _index: number): void => { },
-    markers: new Array<Marker>()
-};
-
-// create a non-colliding random number
-function generateUUID(): string {
-    let d = new Date().getTime();
-    let uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        let r = (d + Math.random() * 16) % 16 | 0;
-        d = Math.floor(d / 16);
-        return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-    return uuid;
 };
 
 /**
  * Returns the size of an element and its position
  * a default Object with 0 on each of its properties
- * its return in case there's an error
+ * is returned in case there's an error
  * @param  {Element} element  el to get the size and position
  * @return {DOMRect|Object}   size and position of an element
  */
@@ -101,7 +107,7 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     //                 return;
     //             }
     //             Object.keys(source).forEach(key => {
-    //                 let value = source[key];
+    //                 const value = source[key];
     //                 if (!isPlain(value)) {
     //                     result[key] = value;
     //                     return;
@@ -133,20 +139,17 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     /**
      * register the markers plugin (dependent on jquery)
      */
-    let setting = videojs.mergeOptions(defaultSetting, options);
-    let markersMap: { [key: string]: Marker } = {};
-    let markersList: Array<Marker> = []; // list of markers sorted by time
+    const setting = videojs.obj.merge(DEFAULT_SETTINGS, options);
+    const markersMap: { [key: string]: Marker } = {};
+    const markersList: Array<Marker> = []; // list of markers sorted by time
     let currentMarkerIndex = NULL_INDEX;
-    let player = this as Player & typeof defaultSetting;
+    const player = this as Player & typeof DEFAULT_SETTINGS;
     let markerTip: HTMLElement | null = null;
     let breakOverlay: HTMLElement | null = null;
     let overlayIndex = NULL_INDEX;
 
-    function sortMarkersList(): void {
-        // sort the list by time in asc order
-        markersList.sort((a, b) => {
-            return setting.markerTip.time(a) - setting.markerTip.time(b);
-        });
+    function sortMarkersAsc(): void {
+        markersList.sort((a, b) => setting.markerTip.time(a) - setting.markerTip.time(b));
     }
 
     function addMarkers(newMarkers: Array<Marker>): void {
@@ -192,7 +195,7 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     }
 
     function createMarkerDiv(marker: Marker): Node {
-        let markerDiv = videojs.dom.createEl('div', {}, {
+        const markerDiv = videojs.dom.createEl('div', {}, {
             'data-marker-key': marker.key,
             'data-marker-time': setting.markerTip.time(marker)
         }) as HTMLElement;
@@ -208,7 +211,7 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
             }
 
             if (!preventDefault) {
-                let key = this.getAttribute('data-marker-key')!;
+                const key = this.getAttribute('data-marker-key')!;
                 player.currentTime(setting.markerTip.time(markersMap[key]));
             }
         });
@@ -223,8 +226,8 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     function _updateMarkers(force: boolean): void {
         // update UI for markers whose time changed
         markersList.forEach((marker: Marker) => {
-            let markerDiv = player.el().querySelector(".vjs-marker[data-marker-key='" + marker.key + "']")! as HTMLElement;
-            let markerTime = setting.markerTip.time(marker);
+            const markerDiv = player.el().querySelector(".vjs-marker[data-marker-key='" + marker.key + "']")! as HTMLElement;
+            const markerTime = setting.markerTip.time(marker);
 
             if (force || markerDiv.getAttribute('data-marker-time') !== markerTime) {
                 setMarkderDivStyle(marker, markerDiv);
@@ -242,16 +245,16 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
         }
         currentMarkerIndex = NULL_INDEX;
 
-        let deleteIndexList: Array<number> = [];
+        const deleteIndexList: Array<number> = [];
         indexArray.forEach((index: number) => {
-            let marker = markersList[index];
+            const marker = markersList[index];
             if (marker) {
                 // delete from memory
                 delete markersMap[marker.key];
                 deleteIndexList.push(index);
 
                 // delete from dom
-                let el = player.el().querySelector(".vjs-marker[data-marker-key='" + marker.key + "']");
+                const el = player.el().querySelector(".vjs-marker[data-marker-key='" + marker.key + "']");
                 el && el.parentNode?.removeChild(el);
             }
         });
@@ -269,7 +272,7 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     // attach hover event handler
     function registerMarkerTipHandler(markerDiv: HTMLElement): void {
         markerDiv.addEventListener('mouseover', () => {
-            let marker = markersMap[markerDiv.getAttribute('data-marker-key')!]!;
+            const marker = markersMap[markerDiv.getAttribute('data-marker-key')!]!;
             if (!!markerTip) {
                 if (setting.markerTip.html) {
                     markerTip.querySelector('.vjs-tip-inner')!.innerHTML = setting.markerTip.html(marker);
@@ -278,8 +281,8 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
                 }
                 // margin-left needs to minus the padding length to align correctly with the marker
                 markerTip.style.left = getPosition(marker) + '%';
-                let markerTipBounding = getElementBounding(markerTip);
-                let markerDivBounding = getElementBounding(markerDiv);
+                const markerTipBounding = getElementBounding(markerTip);
+                const markerDivBounding = getElementBounding(markerDiv);
                 markerTip.style.marginLeft = `${(markerDivBounding.width / 4) - (markerTipBounding.width / 2)} px`;
                 markerTip.style.visibility = 'visible';
             }
@@ -306,9 +309,9 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
             return;
         }
 
-        let currentTime = player.currentTime()!;
-        let marker = markersList[currentMarkerIndex];
-        let markerTime = setting.markerTip.time(marker);
+        const currentTime = player.currentTime()!;
+        const marker = markersList[currentMarkerIndex];
+        const markerTime = setting.markerTip.time(marker);
 
         if (
             currentTime >= markerTime &&
@@ -363,19 +366,19 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
             return;
         }
 
-        let getNextMarkerTime = (index: number): number => {
+        const getNextMarkerTime = (index: number): number => {
             if (index < markersList.length - 1) {
                 return setting.markerTip.time(markersList[index + 1]);
             }
             // next marker time of last marker would be end of video time
             return player.duration()!;
         }
-        let currentTime = player.currentTime()!;
+        const currentTime = player.currentTime()!;
         let newMarkerIndex = NULL_INDEX;
 
         if (currentMarkerIndex !== NULL_INDEX) {
             // check if staying at same marker
-            let nextMarkerTime = getNextMarkerTime(currentMarkerIndex);
+            const nextMarkerTime = getNextMarkerTime(currentMarkerIndex);
             if (
                 currentTime >= setting.markerTip.time(markersList[currentMarkerIndex]) &&
                 currentTime < nextMarkerTime
@@ -397,8 +400,8 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
             newMarkerIndex = NULL_INDEX;
         } else {
             // look for new index
-            for (let i = 0; i < markersList.length; i++) {
-                let nextMarkerTime = getNextMarkerTime(i);
+            for (const i = 0; i < markersList.length; i++) {
+                const nextMarkerTime = getNextMarkerTime(i);
                 if (
                     currentTime >= setting.markerTip.time(markersList[i]) &&
                     currentTime < nextMarkerTime
@@ -449,8 +452,8 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     //     next: function (): void {
     //         // go to the next marker from current timestamp
     //         const currentTime = player.currentTime();
-    //         for (let i = 0; i < markersList.length; i++) {
-    //             let markerTime = setting.markerTip.time(markersList[i]);
+    //         for (const i = 0; i < markersList.length; i++) {
+    //             const markerTime = setting.markerTip.time(markersList[i]);
     //             if (markerTime > currentTime) {
     //                 player.currentTime(markerTime);
     //                 break;
@@ -460,8 +463,8 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     //     prev: function (): void {
     //         // go to previous marker
     //         const currentTime = player.currentTime();
-    //         for (let i = markersList.length - 1; i >= 0; i--) {
-    //             let markerTime = setting.markerTip.time(markersList[i]);
+    //         for (const i = markersList.length - 1; i >= 0; i--) {
+    //             const markerTime = setting.markerTip.time(markersList[i]);
     //             // add a threshold
     //             if (markerTime + 0.5 < currentTime) {
     //                 player.currentTime(markerTime);
@@ -478,8 +481,8 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
     //         removeMarkers(indexArray);
     //     },
     //     removeAll: function (): void {
-    //         let indexArray = [];
-    //         for (let i = 0; i < markersList.length; i++) {
+    //         const indexArray = [];
+    //         for (const i = 0; i < markersList.length; i++) {
     //             indexArray.push(i);
     //         }
     //         removeMarkers(indexArray);
@@ -506,19 +509,157 @@ function registerVideoJsMarkersPlugin(this: Player, options: any) {
 }
 
 export class MarkersPlugin extends VideoJsPlugin {
+
     public static VERSION = '1.1.0';
 
-    constructor(player: Player, options: any) {
+    // each marker gets its own unique GUID
+    private guid = 0;
+
+    // plugin settings
+    private readonly settings: Settings;
+    private markersMap: OrderedMap<string, MarkerInternal>;
+    private currentValues: Array<MarkerInternal> | null = null;
+
+    constructor(player: Player, options: Settings) {
         super(player);
 
-        if (options.customClass) {
-            player.addClass(options.customClass);
-        }
+        this.settings = videojs.obj.merge(DEFAULT_SETTINGS, options)
 
-        player.on('playing', function () {
-            videojs.log('playback began!');
+        this.markersMap = new OrderedMap<string, MarkerInternal>((v1, v2) => {
+            return this.settings.markerTip.time(v1) - this.settings.markerTip.time(v2)
         });
     }
+
+    public getMarkers(): Array<Marker> {
+        return this.markersMap.orderedValues();
+    }
+
+    // go to the next marker from current timestamp
+    public next(): void {
+        if (!this.currentValues) {
+            this.currentValues = this.markersMap.orderedValues();
+        }
+        const marker = MarkersPlugin.binarySearchNextBiggest(this.currentValues, this.player.currentTime()!, (a, b) => a - b.time);
+        if (marker !== null) this.player.currentTime(marker.time);
+    }
+
+    // go to previous marker from current timestamp
+    public prev(): void {
+        if (!this.currentValues) {
+            this.currentValues = this.markersMap.orderedValues();
+        }
+        const marker = MarkersPlugin.binarySearchNextSmallest(this.markersMap.orderedValues(), this.player.currentTime()!, (a, b) => a - b.time);
+        if (marker !== null) this.player.currentTime(marker.time);
+    }
+
+    // add new markers
+    public add(markers: Array<Marker>): void {
+        this.addMarkers(markers);
+        this.currentValues = null;
+    }
+
+    // remove markers given an array of indices
+    // public remove(markers: Array<number>): void {
+    //     removeMarkers(indexArray);
+    //     this.currentValues = null;
+    // }
+
+    // force - force all markers to be updated, regardless of if they have changed or not.
+    // notify the plugin to update the UI for changes in marker times
+    public updateTime(force: boolean): void {
+        this.updateMarkers(force);
+    }
+
+    // remove all the existing markers and add new ones
+    public reset(newMarkers: Array<Marker>): void {
+        this.markersMap.clear();
+        this.addMarkers(newMarkers);
+        this.currentValues = null;
+    }
+
+    // unregister the plugin and clean up
+    public destroy(): void {
+        this.markersMap.clear();
+        if (this.currentValues) this.currentValues.length = 0;
+        this.settings.breakOverlay?.remove && this.settings.breakOverlay.remove();
+        this.settings.markerTip?.remove && this.settings.markerTip.remove();
+        this.player.off("timeupdate", () => { /* updateBreakOverlay */ });
+        this.dispose();
+    }
+
+    private addMarkers(newMarkers: Array<Marker>) {
+        const progressHolder = this.player.$('.vjs-progress-holder');
+        if (!progressHolder) {
+            console.error('no progress-holder found')
+            return;
+        }
+
+        for (const marker of newMarkers.map(m => ({ ...m, key: this.newGUID() } as MarkerInternal))) {
+            progressHolder.appendChild<HTMLElement>(null as unknown as HTMLElement/* createMarkerDiv(marker) */);
+            this.markersMap.set(marker.key, marker);
+        }
+    }
+
+    private updateMarkers(force: boolean) {
+        throw new Error('Function not implemented.');
+    }
+
+    private newGUID(): string {
+        return (this.guid++).toString();
+    }
+
+    private static binarySearch(markers: Array<MarkerInternal>, time: number, comparator: (a: number, b: MarkerInternal) => number): { min: number, max: number } {
+        let min = 0;
+        let max = markers.length - 1;
+        while (min <= max) {
+            const i = (max + min) >> 1;
+            const cmp = comparator(time, markers[i]!);
+            if (cmp > 0) {
+                min = i + 1;
+            } else if (cmp < 0) {
+                max = i - 1;
+            } else {
+                min = i;
+                break;
+            }
+        }
+
+        return { 'min': min, 'max': max };
+    }
+
+    private static binarySearchNextBiggest(markers: Array<MarkerInternal>, time: number, comparator: (a: number, b: MarkerInternal) => number): MarkerInternal | null {
+        let { min } = this.binarySearch(markers, time, comparator);
+
+        if (comparator(time, markers[min]!) < 0) {
+            return markers[min]!;
+        } else {
+            for (let i = min + 1; i < markers.length; i++) {
+                const cmp = comparator(time, markers[i]!);
+                if (cmp < 0) {
+                    return markers[i]!;
+                }
+            }
+            return null;
+        }
+    }
+
+    private static binarySearchNextSmallest(markers: Array<MarkerInternal>, time: number, comparator: (a: number, b: MarkerInternal) => number): MarkerInternal | null {
+        let { max } = this.binarySearch(markers, time, comparator);
+
+        if (comparator(time, markers[max]!) > 0) {
+            return markers[max]!;
+        } else {
+            for (let i = max - 1; i >= 0; i--) {
+                const cmp = comparator(time, markers[i]!);
+                if (cmp > 0) {
+                    return markers[i]!;
+                }
+            }
+            return null;
+        }
+    }
+
 }
 
-videojs.registerPlugin('markers', MarkersPlugin);
+// do this to use the plugin
+// videojs.registerPlugin('markers', MarkersPlugin);
