@@ -25,7 +25,7 @@ export default class MarkersPlugin extends VideoJsPlugin {
 
     private static readonly DEFAULT_SETTINGS: Settings = {
         markerStyle: {
-            'width': '7px',
+            'width': '0.5rem',
             'borderRadius': '30%',
             'backgroundColor': 'red',
         },
@@ -40,15 +40,19 @@ export default class MarkersPlugin extends VideoJsPlugin {
     private readonly markerTip: HTMLElement | null;
 
     private remainingMarkers = new Array<Marker>();
+    private visitedMarkers = new Array<Marker>();
+
     private id = 0;
+
+    private readonly debouncedFindRemainingMarkers: Function;
 
     constructor(player: Player, options: Settings) {
         super(player);
 
         this.settings = videojs.obj.merge(MarkersPlugin.DEFAULT_SETTINGS, options)
-        this.markersMap = new MarkerMap((m1, m2) => m1.time - m2.time);
+        this.markersMap = new MarkerMap();
 
-        // create hovering textbox
+        // create hover-textbox
         if (this.settings.markerTip.display) {
             this.markerTip = videojs.dom.createEl('div', {
                 className: 'vjs-tip',
@@ -66,13 +70,9 @@ export default class MarkersPlugin extends VideoJsPlugin {
         // adjust position of markers if the duration of the current video changes
         this.player.on('durationchange', this.updateMarkers);
 
-
-        this.player.on('seeking', () => this.remainingMarkers.length = 0);
-        this.player.on('seeked', () => {
-            const markers = this.markersMap.orderedValues();
-            const { to } = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
-            this.remainingMarkers = markers.slice(Math.max(to - 1, 0)).reverse();
-        });
+        // update visited/remaining markers when the user clicks somewhere in the progress bar
+        this.debouncedFindRemainingMarkers = videojs.fn.debounce(this.findRemainingMarkers.bind(this), 500);
+        this.player.on('seeked', this.debouncedFindRemainingMarkers);
     }
 
     public getMarkers(): ReadonlyArray<Marker> {
@@ -85,12 +85,10 @@ export default class MarkersPlugin extends VideoJsPlugin {
      * @returns true if successful and false if there is no next marker
      */
     public next(): boolean {
-        const markers = this.markersMap.orderedValues();
-        const { to } = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
-        const nextMarker = markers[to];
-
+        const nextMarker = this.remainingMarkers.pop();
         if (nextMarker !== undefined) {
             this.player.currentTime(nextMarker.time);
+            this.visitedMarkers.push(nextMarker);
             return true;
         } else {
             return false;
@@ -103,12 +101,10 @@ export default class MarkersPlugin extends VideoJsPlugin {
      * @returns true if successful and false if there is no previous marker
      */
     public prev(): boolean {
-        const markers = this.markersMap.orderedValues();
-        const { to } = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
-        const prevMarker = markers[to - 1];
-
+        const prevMarker = this.visitedMarkers.pop();
         if (prevMarker !== undefined) {
             this.player.currentTime(prevMarker.time);
+            this.remainingMarkers.push(prevMarker);
             return true;
         } else {
             return false;
@@ -141,25 +137,29 @@ export default class MarkersPlugin extends VideoJsPlugin {
         if (this.settings.markerTip?.remove) {
             this.settings.markerTip.remove();
         }
-        this.clearRemainingMarkers();
+        this.visitedMarkers.length = 0;
+        this.remainingMarkers.length = 0;
 
         this.player.off('timeupdate', this.checkIfMarkerReached);
-        this.player.off('loadedmetadata', this.updateMarkers);
         this.player.off('durationchange', this.updateMarkers);
-        this.player.off('seeking', this.clearRemainingMarkers);
-        this.player.on('seeked', this.findRemainingMarkers);
+        this.player.off('seeked', this.debouncedFindRemainingMarkers);
+
+        this.player.$$('[data-markers-id]').forEach(node =>  {
+            const markerDiv = node as HTMLElement;
+            markerDiv.removeEventListener('click', this.markerClicked);
+            markerDiv.removeEventListener('mouseover', this.showMarkerTip);
+            markerDiv.removeEventListener('mouseout', this.hideMarkerTip);
+            markerDiv.remove();
+        });
 
         super.dispose();
-    }
-
-    private clearRemainingMarkers() {
-        this.remainingMarkers.length = 0;
     }
 
     private findRemainingMarkers() {
         const markers = this.markersMap.orderedValues();
         const { to } = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
-        this.remainingMarkers = markers.slice(Math.max(to - 1, 0)).reverse();
+        this.remainingMarkers = markers.slice(to).reverse();
+        this.visitedMarkers = markers.slice(0, to);
     }
 
     private updateMarker(marker: Marker, duration?: number) {
@@ -196,8 +196,6 @@ export default class MarkersPlugin extends VideoJsPlugin {
         markerDiv.style.left = (marker.time / duration!) * 100 + '%';
         if (marker.duration) {
             markerDiv.style.width = (marker.duration / duration!) * 100 + '%';
-        } else {
-            markerDiv.style.width = '0.5rem';
         }
 
         // handle onclick event (set time, trigger onMarkerReached()),
@@ -211,37 +209,7 @@ export default class MarkersPlugin extends VideoJsPlugin {
         // duration() only returns undefined if used as a setter
         const duration = this.player.duration()!;
         for (const marker of this.markersMap.values()) {
-            // create marker
-            const markerDiv = videojs.dom.createEl('div', {}, {
-                'class': `vjs-marker ${marker.class ?? ''}`,
-                'data-marker-id': marker.id,
-                'data-marker-time': marker.time
-            }) as HTMLElement;
-
-            //apply style
-            for (const key in this.settings.markerStyle) {
-                markerDiv.style.setProperty(key, this.settings.markerStyle[key]!);
-            }
-
-            // hide out-of-bounds markers
-            const ratio = marker.time / duration;
-            if (ratio < 0.0 || ratio > 1.0) {
-                markerDiv.style.display = 'none';
-            }
-
-            // set position
-            markerDiv.style.left = (marker.time / duration) * 100 + '%';
-            if (marker.duration) {
-                markerDiv.style.width = (marker.duration / duration) * 100 + '%';
-            } else {
-                markerDiv.style.width = '0.5rem';
-            }
-
-            // handle onclick event (set time, trigger onMarkerReached()),
-            // and hover effects
-            markerDiv.addEventListener('click', this.markerClicked);
-            markerDiv.addEventListener('mouseover', this.showMarkerTip);
-            markerDiv.addEventListener('mouseout', this.hideMarkerTip);
+            this.updateMarker(marker, duration);
         }
     }
 
@@ -250,7 +218,7 @@ export default class MarkersPlugin extends VideoJsPlugin {
         const markerId = (event.target as HTMLElement).getAttribute('data-marker-id')!;
         const marker = this.markersMap.get(markerId)!;
 
-        this.player.currentTime(marker.time + 0.1);
+        this.player.currentTime(marker.time);
 
         if (this.settings.onMarkerReached) {
             this.settings.onMarkerReached(marker);
@@ -281,17 +249,13 @@ export default class MarkersPlugin extends VideoJsPlugin {
         }
     }
 
-    private peekNextMarker(): Marker | undefined {
-        return this.remainingMarkers[this.remainingMarkers.length]
-    }
-
     private checkIfMarkerReached() {
         if (this.markersMap.size === 0) return;
 
-        const nextMarker = this.peekNextMarker();
-        if (nextMarker !== undefined && (nextMarker.time - this.player.currentTime()!) < 0.0) {
-            this.remainingMarkers.pop();
-            this.settings.onMarkerReached!(nextMarker);
+        const peekNextMarker = this.remainingMarkers[this.remainingMarkers.length - 1];
+        if (peekNextMarker !== undefined && (peekNextMarker.time - this.player.currentTime()!) < 0.0) {
+            this.visitedMarkers.push(this.remainingMarkers.pop()!);
+            this.settings.onMarkerReached!(peekNextMarker);
         }
     }
 

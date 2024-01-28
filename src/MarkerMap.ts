@@ -1,20 +1,18 @@
 import { Marker } from './Types';
 
+function compareMarkers(m1: Marker, m2: Marker) {
+    return m1.time - m2.time;
+}
+
 export default class MarkerMap extends Map<Marker["id"], Marker> {
 
-    private readonly comparator;
     private orderedValuesCached: ReadonlyArray<Marker> | null = null;
-
-    public constructor(comparator: (m1: Marker, m2: Marker) => number) {
-        super();
-        this.comparator = comparator;
-    }
 
     public orderedValues(): ReadonlyArray<Marker> {
         if (this.orderedValuesCached !== null) {
             return this.orderedValuesCached;
         } else {
-            return Array.from(this.values()).sort(this.comparator);
+            return Array.from(this.values()).sort(compareMarkers);
         }
     }
 

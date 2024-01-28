@@ -3,7 +3,7 @@ export interface MarkerOptions {
     duration?: number,
     text?: string,
     class?: string,
-};
+}
 
 export type Marker = MarkerOptions & { readonly id: string };
 
