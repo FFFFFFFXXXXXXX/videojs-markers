@@ -1,8 +1,4 @@
-import { Marker } from './Types';
-
-function compareMarkers(m1: Marker, m2: Marker) {
-    return m1.time - m2.time;
-}
+import {Marker} from './Plugin';
 
 export default class MarkerMap extends Map<Marker["id"], Marker> {
 
@@ -12,7 +8,7 @@ export default class MarkerMap extends Map<Marker["id"], Marker> {
         if (this.orderedValuesCached !== null) {
             return this.orderedValuesCached;
         } else {
-            return Array.from(this.values()).sort(compareMarkers);
+            return Array.from(this.values()).sort(MarkerMap.compareMarkers);
         }
     }
 
@@ -34,6 +30,10 @@ export default class MarkerMap extends Map<Marker["id"], Marker> {
     public add(value: Marker): this {
         this.orderedValuesCached = null;
         return super.set(value.id, value);
+    }
+
+    private static compareMarkers(m1: Marker, m2: Marker) {
+        return m1.time - m2.time;
     }
 
 }
