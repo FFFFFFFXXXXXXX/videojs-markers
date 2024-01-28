@@ -7,7 +7,6 @@
   transition: opacity 0.2s ease;
   -webkit-transition: opacity 0.2s ease;
   -moz-transition: opacity 0.2s ease;
-  z-index: 100;
 }
 .vjs-marker:hover {
   cursor: pointer;
@@ -25,7 +24,7 @@
   font-size: 10px;
   position: absolute;
   bottom: 14px;
-  z-index: 100000;
+  z-index: 2;
 }
 .vjs-tip .vjs-tip-arrow {
   background: url(data:image/gif;base64,R0lGODlhCQAJAIABAAAAAAAAACH5BAEAAAEALAAAAAAJAAkAAAIRjAOnwIrcDJxvwkplPtchVQAAOw==) no-repeat top left;
@@ -45,15 +44,5 @@
   background-color: black;
   color: white;
   max-width: 200px;
-  text-align: center;
-}
-.vjs-break-overlay {
-  visibility: hidden;
-  position: absolute;
-  z-index: 100000;
-  top: 0;
-}
-.vjs-break-overlay .vjs-break-overlay-text {
-  padding: 9px;
   text-align: center;
 }
