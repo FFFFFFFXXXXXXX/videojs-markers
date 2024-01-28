@@ -1,20 +1,20 @@
 {
+  "files": [
+    "./src/Plugin.ts",
+    "./src/MarkerMap.ts"
+  ],
   "compilerOptions": {
-    /* Projects */
-    "target": "ES2015", /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
-    /* Modules */
-    "module": "NodeNext", /* Specify what module code is generated. */
-    "rootDir": "./src/", /* Specify the root folder within your source files. */
-    "moduleResolution": "Node16", /* Specify how TypeScript looks up a file from a given module specifier. */
+    /* Types */
+    "target": "ES2015",
+    "module": "CommonJS",
+    "lib": ["ES2015", "dom"],
+    "paths": {
+      "videojs/player": ["./node_modules/video.js/dist/types/player"],
+      "videojs/plugin": ["./node_modules/video.js/dist/types/plugin"]
+    },
     /* Emit */
+    "noEmit": false,
     "declaration": true, /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
-    // "declarationMap": true,                           /* Create sourcemaps for d.ts files. */
-    // "emitDeclarationOnly": true,                      /* Only output d.ts files and not JavaScript files. */
-    // "sourceMap": true,                                /* Create source map files for emitted JavaScript files. */
-    "inlineSourceMap": true, /* Include sourcemap files inside the emitted JavaScript. */
-    "outDir": "./dist/", /* Specify an output folder for all emitted files. */
-    // "removeComments": true,                           /* Disable emitting comments. */
-    // "inlineSources": true,                            /* Include source code in the sourcemaps inside the emitted JavaScript. */
     "newLine": "lf", /* Set the newline character for emitting files. */
     /* Interop Constraints */
     "forceConsistentCasingInFileNames": true, /* Ensure that casing is correct in imports. */
@@ -34,9 +34,6 @@
     "noFallthroughCasesInSwitch": true, /* Enable error reporting for fallthrough cases in switch statements. */
     "noUncheckedIndexedAccess": true, /* Add 'undefined' to a type when accessed using an index. */
     "noImplicitOverride": true, /* Ensure overriding members in derived classes are marked with an override modifier. */
-    "noPropertyAccessFromIndexSignature": true, /* Enforces using indexed accessors for keys declared using an indexed type. */
-    /* Completeness */
-    // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-    // "skipLibCheck": true /* Skip type checking all .d.ts files. */
+    "noPropertyAccessFromIndexSignature": true /* Enforces using indexed accessors for keys declared using an indexed type. */
   }
 }

@@ -1,25 +1,40 @@
-/*
- * videojs-markers
- * @flow
- */
-
 import videojs from 'video.js';
-import Player from 'video.js/dist/types/player';
-import VideoJsPlugin from 'video.js/dist/types/plugin'
-import MarkerMap from './MarkerMap';
-import { Marker, MarkerOptions, Settings, Range } from './Types';
+import type Player from 'videojs/player';
+import type Plugin from 'videojs/plugin';
+
+import MarkerMap from "./MarkerMap";
+
+export interface MarkerOptions {
+    time: number,
+    duration?: number,
+    text?: string,
+    class?: string,
+}
+export interface Id { readonly id: string}
+export interface Marker extends MarkerOptions, Id {}
+
+export type Settings = {
+    markerStyle: Partial<CSSStyleDeclaration>,
+    markerTip: Partial<HTMLElement> & {
+        display: boolean,
+        innerHtml: (marker: MarkerOptions) => string
+    },
+    onMarkerReached?: (marker: MarkerOptions) => void,
+}
+
+const BasePlugin = videojs.getPlugin('plugin') as typeof Plugin;
 
 /**
  * To use the plugin you have to register it with videojs:
- * 
+ *
  * ```ts
  * videojs.registerPlugin('markers', MarkersPlugin)
  * ```
- * 
+ *
  * The name ('markers' in the example) you give the plugin shouldn't matter
  * unless there is already another plugin with the same name
  */
-export default class MarkersPlugin extends VideoJsPlugin {
+class MarkersPlugin extends BasePlugin {
 
     public static readonly VERSION = '1.1.0';
 
@@ -64,15 +79,15 @@ export default class MarkersPlugin extends VideoJsPlugin {
         }
 
         if (this.settings.onMarkerReached) {
-            this.player.on('timeupdate', this.checkIfMarkerReached);
+            this.player.on('timeupdate', this.checkIfMarkerReached.bind(this));
         }
 
         // adjust position of markers if the duration of the current video changes
-        this.player.on('durationchange', this.updateMarkers);
+        this.player.on('durationchange', this.updateMarkers.bind(this));
 
         // update visited/remaining markers when the user clicks somewhere in the progress bar
         this.debouncedFindRemainingMarkers = videojs.fn.debounce(this.findRemainingMarkers.bind(this), 500);
-        this.player.on('seeked', this.debouncedFindRemainingMarkers);
+        this.player.on('seeked', this.debouncedFindRemainingMarkers.bind(this));
     }
 
     public getMarkers(): ReadonlyArray<Marker> {
@@ -81,7 +96,7 @@ export default class MarkersPlugin extends VideoJsPlugin {
 
     /**
      * Go to the next marker from current timestamp.
-     * 
+     *
      * @returns true if successful and false if there is no next marker
      */
     public next(): boolean {
@@ -97,7 +112,7 @@ export default class MarkersPlugin extends VideoJsPlugin {
 
     /**
      * Go to previous marker from current timestamp.
-     * 
+     *
      * @returns true if successful and false if there is no previous marker
      */
     public prev(): boolean {
@@ -113,7 +128,7 @@ export default class MarkersPlugin extends VideoJsPlugin {
 
     /**
      * Create markers for all the given MarkerOptions and show them in the video progress bar.
-     * 
+     *
      * @param markers
      */
     public addAll(markers: Array<MarkerOptions>) {
@@ -127,6 +142,8 @@ export default class MarkersPlugin extends VideoJsPlugin {
             this.markersMap.add(marker);
             this.updateMarker(marker);
         }
+
+        this.findRemainingMarkers();
     }
 
     /**
@@ -157,9 +174,9 @@ export default class MarkersPlugin extends VideoJsPlugin {
 
     private findRemainingMarkers() {
         const markers = this.markersMap.orderedValues();
-        const { to } = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
-        this.remainingMarkers = markers.slice(to).reverse();
-        this.visitedMarkers = markers.slice(0, to);
+        const nextBiggest = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
+        this.remainingMarkers = markers.slice(nextBiggest).reverse();
+        this.visitedMarkers = markers.slice(0, nextBiggest);
     }
 
     private updateMarker(marker: Marker, duration?: number) {
@@ -203,6 +220,8 @@ export default class MarkersPlugin extends VideoJsPlugin {
         markerDiv.addEventListener('click', this.markerClicked);
         markerDiv.addEventListener('mouseover', this.showMarkerTip);
         markerDiv.addEventListener('mouseout', this.hideMarkerTip);
+
+        this.player.$('.vjs-progress-holder')?.appendChild(markerDiv);
     }
 
     private updateMarkers() {
@@ -267,16 +286,21 @@ export default class MarkersPlugin extends VideoJsPlugin {
     }
 
     /**
-     * Returns the range of the found marker in the list. E.g. for i = 3 returns the Range { from: 3, to: 4 }
-     * If there is no marker with the same exact time returns a Range where 'from' and 'to' both are set to the
+     * Finds the range of the found marker in the list. E.g. if the found element has index 3 returns the 'to' value of the Slice { from: 3, to: 4 }.
+     * If there is no marker with the same exact time returns the 'to' value of the Slice where 'from' and 'to' both are set to the
      * index of the next biggest element (or after the end of the array).
      * If there are multiple markers in the array that all have the same time that we are looking for, returns one of them at random.
-     * 
+     *
      * @param markers
      * @param time
      */
-    private static binarySearch(markers: ReadonlyArray<Marker>, time: number): Range {
-        const slice: Range = { from: 0, to: markers.length };
+    private static binarySearch(markers: ReadonlyArray<Marker>, time: number): number {
+        type Slice = {
+            from: number,
+            to: number
+        }
+
+        const slice: Slice = { from: 0, to: markers.length };
         while (slice.from !== slice.to) {
             const middle = (slice.from + slice.to) >> 1;
             if (time > markers[middle]!.time) {
@@ -284,11 +308,12 @@ export default class MarkersPlugin extends VideoJsPlugin {
             } else if (time < markers[middle]!.time) {
                 slice.to = middle;
             } else {
-                return { from: middle, to: middle + 1 };
+                return middle + 1;
             }
         }
-
-        return slice;
+        return slice.to;
     }
 
 }
+
+videojs.registerPlugin('markers', MarkersPlugin);

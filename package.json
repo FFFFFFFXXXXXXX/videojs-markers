@@ -2,16 +2,22 @@
   "name": "videojs-markers",
   "description": "video marker breaks plugin for video.js",
   "version": "1.0.2",
+  "type": "commonjs",
   "main": "dist/videojs-markers.js",
   "scripts": {
-    "build": "tsc && lessc ./src/videojs.markers.less ./dist/videojs.markers.css"
+    "lint": "tsc",
+    "build": "cp ./src/videojs.markers.css ./dist/"
   },
   "peerDependencies": {
-    "video.js": ">=8.0.0"
+    "video.js": "^8.10.0"
   },
   "devDependencies": {
-    "@types/video.js": "^7.3.56",
-    "less": "^4.2.0",
+    "@babel/cli": "^7.23.9",
+    "@babel/core": "^7.23.9",
+    "@babel/plugin-transform-modules-commonjs": "^7.23.3",
+    "@babel/preset-env": "^7.23.9",
+    "@babel/preset-typescript": "^7.23.3",
+    "babel-plugin-add-module-exports": "^1.0.4",
     "typescript": "^5.3.3"
   }
 }

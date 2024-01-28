@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en-US">
 
 <head>
    <title>Video.js Markers Example</title>
@@ -27,7 +27,7 @@
          clear: both;
       }
    </style>
-   <link href="http://vjs.zencdn.net/4.3/video-js.css" rel="stylesheet">
+   <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
    <link href="../dist/videojs.markers.css" rel="stylesheet">
 
 </head>
@@ -38,8 +38,8 @@
 
    <div>
       <video id="test_video" controls preload="none" class="video-js vjs-default-skin" width="640" height="264">
-         <source src="http://vjs.zencdn.net/v/oceans.mp4" type="video/mp4">
-         <source src="http://vjs.zencdn.net/v/oceans.webm" type="video/webm">
+         <source src="https://vjs.zencdn.net/v/oceans.mp4" type="video/mp4">
+         <source src="https://vjs.zencdn.net/v/oceans.webm" type="video/webm">
       </video>
       <div class='event-list'>
          <div><b>Events: </b></div>
@@ -56,13 +56,12 @@
       <div class='destroy'>Destroy</div>
    </div>
 </body>
-<script src="http://code.jquery.com/jquery-2.0.3.min.js"></script>
+<script src="https://code.jquery.com/jquery-2.0.3.min.js"></script>
 <script src="https://vjs.zencdn.net/8.9.0/video.min.js"></script>
 <script src='../dist/videojs-markers.js'></script>
 
 <script>
-   // initialize video.js
-   var player = videojs('test_video');
+   const player = videojs('test_video');
 
    //load the marker plugin
    player.markers({
@@ -80,11 +79,11 @@
          }
       },
       onMarkerReached: function (marker) {
-         $('.event-list').append("<div>marker reached: " + marker.text + "</div>");
+         videojs.dom.$('.event-list').append("<div>marker reached: " + marker.text + "</div>");
 
       },
       onMarkerClick: function (marker) {
-         $('.event-list').append("<div>marker clicked: " + marker.text + "</div>");
+         videojs.dom.$('.event-list').append("<div>marker clicked: " + marker.text + "</div>");
 
       },
       markers: [
@@ -116,41 +115,43 @@
       ]
    });
 
-   $(".next").click(function () {
-      player.markers.next();
-   });
-   $(".prev").click(function () {
-      player.markers.prev();
-   });
-   $(".remove").click(function () {
-      player.markers.remove([0, 1]);
-   })
-   $(".add").click(function () {
-      player.markers.add([{
-         time: 25,
-         text: "I'm NEW"
-      }]);
-   });
-   $(".updateTime").click(function () {
-      var markers = player.markers.getMarkers();
-      for (var i = 0; i < markers.length; i++) {
-         markers[i].time += 1;
-      }
-      player.markers.updateTime();
-   });
+   player.one('pluginsetup:markers', () => {
+      videojs.dom.$(".next").addEventListener('click', function () {
+         player.markers().next();
+      });
+      videojs.dom.$(".prev").addEventListener('click', function () {
+         player.markers().prev();
+      });
+      videojs.dom.$(".remove").addEventListener('click', function () {
+         player.markers().remove([0, 1]);
+      })
+      videojs.dom.$(".add").addEventListener('click', function () {
+         player.markers().addAll([{
+            time: 25,
+            text: "I'm NEW"
+         }]);
+      });
+      videojs.dom.$(".updateTime").addEventListener('click', function () {
+         const markers = player.markers().getMarkers();
+         for (let i = 0; i < markers.length; i++) {
+            markers[i].time += 1;
+         }
+         player.markers().updateTime();
+      });
 
-   $(".reset").click(function () {
-      player.markers.reset([{
-         time: 40,
-         text: "I'm NEW"
-      },
-      {
-         time: 20,
-         text: "Brand new"
-      }]);
-   });
-   $(".destroy").click(function () {
-      player.markers.destroy();
+      videojs.dom.$(".reset").addEventListener('click', function () {
+         player.markers().reset([{
+            time: 40,
+            text: "I'm NEW"
+         },
+            {
+               time: 20,
+               text: "Brand new"
+            }]);
+      });
+      videojs.dom.$(".destroy").addEventListener('click', function () {
+         player.markers().destroy();
+      })
    })
 </script>
 
