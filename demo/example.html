@@ -63,7 +63,46 @@
 <script>
    const player = videojs('test_video');
 
-   //load the marker plugin
+   player.one('pluginsetup:markers', () => {
+      videojs.dom.$(".next").addEventListener('click', function () {
+         player.markers().next();
+      });
+      videojs.dom.$(".prev").addEventListener('click', function () {
+         player.markers().prev();
+      });
+      videojs.dom.$(".remove").addEventListener('click', function () {
+         player.markers().remove([0, 1]);
+      })
+      videojs.dom.$(".add").addEventListener('click', function () {
+         player.markers().addAll([{
+            time: 25,
+            text: "I'm NEW"
+         }]);
+      });
+      videojs.dom.$(".updateTime").addEventListener('click', function () {
+         const markers = player.markers().getMarkers();
+         for (let i = 0; i < markers.length; i++) {
+            markers[i].time += 1;
+         }
+         player.markers().updateTime();
+      });
+
+      videojs.dom.$(".reset").addEventListener('click', function () {
+         player.markers().reset([{
+            time: 40,
+            text: "I'm NEW"
+         },
+            {
+               time: 20,
+               text: "Brand new"
+            }]);
+      });
+      videojs.dom.$(".destroy").addEventListener('click', function () {
+         player.markers().destroy();
+      })
+   })
+
+   // load the marker plugin
    player.markers({
       markerTip: {
          display: true,
@@ -114,45 +153,6 @@
          }
       ]
    });
-
-   player.one('pluginsetup:markers', () => {
-      videojs.dom.$(".next").addEventListener('click', function () {
-         player.markers().next();
-      });
-      videojs.dom.$(".prev").addEventListener('click', function () {
-         player.markers().prev();
-      });
-      videojs.dom.$(".remove").addEventListener('click', function () {
-         player.markers().remove([0, 1]);
-      })
-      videojs.dom.$(".add").addEventListener('click', function () {
-         player.markers().addAll([{
-            time: 25,
-            text: "I'm NEW"
-         }]);
-      });
-      videojs.dom.$(".updateTime").addEventListener('click', function () {
-         const markers = player.markers().getMarkers();
-         for (let i = 0; i < markers.length; i++) {
-            markers[i].time += 1;
-         }
-         player.markers().updateTime();
-      });
-
-      videojs.dom.$(".reset").addEventListener('click', function () {
-         player.markers().reset([{
-            time: 40,
-            text: "I'm NEW"
-         },
-            {
-               time: 20,
-               text: "Brand new"
-            }]);
-      });
-      videojs.dom.$(".destroy").addEventListener('click', function () {
-         player.markers().destroy();
-      })
-   })
 </script>
 
 </html>

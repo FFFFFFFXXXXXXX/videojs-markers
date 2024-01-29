@@ -1,17 +1,12 @@
 {
   "files": [
-    "./src/Plugin.ts",
-    "./src/MarkerMap.ts"
+    "./src/videojs-markers.ts"
   ],
   "compilerOptions": {
     /* Types */
     "target": "ES2015",
     "module": "CommonJS",
     "lib": ["ES2015", "dom"],
-    "paths": {
-      "videojs/player": ["./node_modules/video.js/dist/types/player"],
-      "videojs/plugin": ["./node_modules/video.js/dist/types/plugin"]
-    },
     /* Emit */
     "noEmit": false,
     "declaration": true, /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
