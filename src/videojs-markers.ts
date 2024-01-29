@@ -1,25 +1,65 @@
-import videojs from 'video.js';
-import type Player from 'videojs/player';
-import type Plugin from 'videojs/plugin';
+import type videoJs from '../node_modules/video.js/dist/types/video';
+import type Player from '../node_modules/video.js/dist/types/player';
+import type Plugin from '../node_modules/video.js/dist/types/plugin';
 
-import MarkerMap from "./MarkerMap";
+// use videojs object from global context
+// @ts-ignore
+const videojs = globalThis['videojs'] as typeof videoJs;
 
-export interface MarkerOptions {
+interface MarkerOptions {
     time: number,
     duration?: number,
     text?: string,
     class?: string,
 }
-export interface Id { readonly id: string}
-export interface Marker extends MarkerOptions, Id {}
+interface Id { readonly id: string}
+interface Marker extends MarkerOptions, Id {}
 
-export type Settings = {
+type Settings = {
     markerStyle: Partial<CSSStyleDeclaration>,
     markerTip: Partial<HTMLElement> & {
         display: boolean,
         innerHtml: (marker: MarkerOptions) => string
     },
     onMarkerReached?: (marker: MarkerOptions) => void,
+}
+
+class MarkerMap extends Map<Marker["id"], Marker> {
+
+    private orderedValuesCached: ReadonlyArray<Marker> | null = null;
+
+    public orderedValues(): ReadonlyArray<Marker> {
+        if (this.orderedValuesCached !== null) {
+            return this.orderedValuesCached;
+        } else {
+            return Array.from(this.values()).sort(MarkerMap.compareMarkers);
+        }
+    }
+
+    public override clear() {
+        this.orderedValuesCached = null;
+        super.clear();
+    }
+
+    public override delete(key: Marker["id"]): boolean {
+        this.orderedValuesCached = null;
+        return super.delete(key);
+    }
+
+    public override set(key: Marker["id"], value: Marker): this {
+        this.orderedValuesCached = null;
+        return super.set(key, value);
+    }
+
+    public add(value: Marker): this {
+        this.orderedValuesCached = null;
+        return super.set(value.id, value);
+    }
+
+    private static compareMarkers(m1: Marker, m2: Marker) {
+        return m1.time - m2.time;
+    }
+
 }
 
 const BasePlugin = videojs.getPlugin('plugin') as typeof Plugin;
@@ -59,7 +99,9 @@ class MarkersPlugin extends BasePlugin {
 
     private id = 0;
 
-    private readonly debouncedFindRemainingMarkers: Function;
+    private readonly boundCheckIfMarkerReached: Function | null = null;
+    private readonly boundUpdateMarkers: Function;
+    private readonly boundDebouncedFindRemainingMarkers: Function;
 
     constructor(player: Player, options: Settings) {
         super(player);
@@ -79,15 +121,17 @@ class MarkersPlugin extends BasePlugin {
         }
 
         if (this.settings.onMarkerReached) {
-            this.player.on('timeupdate', this.checkIfMarkerReached.bind(this));
+            this.boundCheckIfMarkerReached = this.checkIfMarkerReached.bind(this);
+            this.player.on('timeupdate', this.boundCheckIfMarkerReached);
         }
 
         // adjust position of markers if the duration of the current video changes
-        this.player.on('durationchange', this.updateMarkers.bind(this));
+        this.boundUpdateMarkers = this.updateMarkers.bind(this);
+        this.player.on('durationchange', this.boundUpdateMarkers);
 
         // update visited/remaining markers when the user clicks somewhere in the progress bar
-        this.debouncedFindRemainingMarkers = videojs.fn.debounce(this.findRemainingMarkers.bind(this), 500);
-        this.player.on('seeked', this.debouncedFindRemainingMarkers.bind(this));
+        this.boundDebouncedFindRemainingMarkers = videojs.fn.debounce(this.findRemainingMarkers, 500).bind(this);
+        this.player.on('seeked', this.boundDebouncedFindRemainingMarkers);
     }
 
     public getMarkers(): ReadonlyArray<Marker> {
@@ -157,15 +201,17 @@ class MarkersPlugin extends BasePlugin {
         this.visitedMarkers.length = 0;
         this.remainingMarkers.length = 0;
 
-        this.player.off('timeupdate', this.checkIfMarkerReached);
-        this.player.off('durationchange', this.updateMarkers);
-        this.player.off('seeked', this.debouncedFindRemainingMarkers);
+        if (this.boundCheckIfMarkerReached) {
+            this.player.off('timeupdate', this.boundCheckIfMarkerReached);
+        }
+        this.player.off('durationchange', this.boundUpdateMarkers);
+        this.player.off('seeked', this.boundDebouncedFindRemainingMarkers);
 
         this.player.$$('[data-markers-id]').forEach(node =>  {
             const markerDiv = node as HTMLElement;
-            markerDiv.removeEventListener('click', this.markerClicked);
-            markerDiv.removeEventListener('mouseover', this.showMarkerTip);
-            markerDiv.removeEventListener('mouseout', this.hideMarkerTip);
+            markerDiv.onclick = null;
+            markerDiv.onmouseover = null;
+            markerDiv.onmouseout = null;
             markerDiv.remove();
         });
 
@@ -185,9 +231,9 @@ class MarkersPlugin extends BasePlugin {
         // remove previous marker with the same id (if there is one)
         const prevMarkerDiv = this.player.$(`[data-markers-id='${marker.id}']`) as HTMLElement | null;
         if (prevMarkerDiv) {
-            prevMarkerDiv.removeEventListener('click', this.markerClicked);
-            prevMarkerDiv.removeEventListener('mouseover', this.showMarkerTip);
-            prevMarkerDiv.removeEventListener('mouseout', this.hideMarkerTip);
+            prevMarkerDiv.onclick = null;
+            prevMarkerDiv.onmouseover = null;
+            prevMarkerDiv.onmouseout = null;
             prevMarkerDiv.remove();
         }
 
@@ -200,7 +246,7 @@ class MarkersPlugin extends BasePlugin {
 
         //apply style
         for (const key in this.settings.markerStyle) {
-            markerDiv.style.setProperty(key, this.settings.markerStyle[key]!);
+            markerDiv.style[key] = this.settings.markerStyle[key]!;
         }
 
         // hide out-of-bounds markers
@@ -217,9 +263,9 @@ class MarkersPlugin extends BasePlugin {
 
         // handle onclick event (set time, trigger onMarkerReached()),
         // and hover effects
-        markerDiv.addEventListener('click', this.markerClicked);
-        markerDiv.addEventListener('mouseover', this.showMarkerTip);
-        markerDiv.addEventListener('mouseout', this.hideMarkerTip);
+        markerDiv.onclick = this.markerClicked.bind(this);
+        markerDiv.onmouseover = this.showMarkerTip.bind(this);
+        markerDiv.onmouseout = this.hideMarkerTip.bind(this);
 
         this.player.$('.vjs-progress-holder')?.appendChild(markerDiv);
     }
@@ -258,7 +304,7 @@ class MarkersPlugin extends BasePlugin {
         this.markerTip.style.left = (marker.time / this.player.duration()!) * 100 + '%';
         const markerTipBounding = videojs.dom.getBoundingClientRect(this.markerTip);
         const markerDivBounding = videojs.dom.getBoundingClientRect(markerDiv);
-        this.markerTip.style.marginLeft = `${(markerDivBounding.width / 4) - (markerTipBounding.width / 2)} px`;
+        this.markerTip.style.marginLeft = ((markerDivBounding.width / 4) - (markerTipBounding.width / 2)) + 'px';
         this.markerTip.style.visibility = 'visible';
     }
 
