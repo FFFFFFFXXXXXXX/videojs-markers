@@ -1,8 +1,7 @@
 {
   "files": [
     "./src/videojs-markers.ts",
-    "./src/MarkerMap.ts",
-    "./dist/types.d.ts"
+    "./src/MarkerMap.ts"
   ],
   "compilerOptions": {
     /* Types */
