@@ -75,6 +75,9 @@ npm run build
 
 
 ## History
+- 1.1.0
+  - Rewrite as advanced videojs plugin
+  - Add typescript types / typechecking
 - 1.0.2
    - Fixing issue #109
 - 1.0.1
