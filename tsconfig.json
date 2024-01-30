@@ -10,7 +10,7 @@
     "module": "CommonJS",
     "lib": ["ES2015", "dom"],
     /* Emit */
-    "noEmit": false,
+    "noEmit": true,
     "declaration": true, /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
     "newLine": "lf", /* Set the newline character for emitting files. */
     /* Interop Constraints */
