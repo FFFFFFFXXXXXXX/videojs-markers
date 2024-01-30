@@ -3,6 +3,7 @@
   "description": "video marker breaks plugin for video.js",
   "version": "1.1.0",
   "source": "./src/videojs-markers.ts",
+  "types": "./dist/types.d.ts",
   "targets": {
     "default": {
       "context": "browser"
@@ -11,7 +12,7 @@
   "scripts": {
     "lint": "tsc",
     "watch": "parcel watch",
-    "build": "cp ./src/videojs.markers.css ./dist/ && parcel build"
+    "build": "parcel build"
   },
   "peerDependencies": {
     "video.js": "^8.10.0"

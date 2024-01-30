@@ -46,3 +46,8 @@
     max-width: 200px;
     text-align: center;
 }
+
+.video-js .vjs-play-progress::before {
+    /* needs to be bigger than the on .vjs-tip so the circle marking the current position in the progressbar is not covered by the markers */
+    z-index: 2147483647; /* max value */
+}
