@@ -2,7 +2,7 @@
   "name": "@fffffffxxxxxxx/videojs-markers",
   "description": "video marker breaks plugin for video.js",
   "author": "FX",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "repository": "https://github.com/FFFFFFFXXXXXXX/videojs-markers",
   "source": "./src/videojs-markers.ts",
   "types": "./dist/types.d.ts",
