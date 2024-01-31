@@ -1,8 +1,8 @@
 import './videojs-markers.css';
 
-import type videoJs from '../node_modules/video.js/dist/types/video';
-import type Player from '../node_modules/video.js/dist/types/player';
-import type Plugin from '../node_modules/video.js/dist/types/plugin';
+import type videoJs from 'video.js/dist/types/video';
+import type Player from 'video.js/dist/types/player';
+import type Plugin from 'video.js/dist/types/plugin';
 
 import { MarkerMap } from "./MarkerMap";
 
@@ -41,7 +41,7 @@ export type Settings = {
  */
 export class MarkersPlugin extends BasePlugin {
 
-    public static readonly VERSION = '1.1.0';
+    public static readonly VERSION = '1.1.4';
 
     private static readonly DEFAULT_SETTINGS: Settings = {
         markerStyle: {
@@ -141,14 +141,13 @@ export class MarkersPlugin extends BasePlugin {
      * @param markerOptions
      * @returns An array of all added Markers ordered by 'time'
      */
-    public add(markerOptions: ReadonlyArray<MarkerOptions>): ReadonlyArray<Marker> {
+    public add(markerOptions: ReadonlyArray<MarkerOptions>) {
         for (const marker of markerOptions.map(m => ({ ...m, id: this.newId() } as Marker))) {
             this.markersMap.add(marker);
             this.updateMarker(marker);
         }
 
         this.splitMarkers();
-        return this.markersMap.orderedValues();
     }
 
     /**
@@ -254,9 +253,7 @@ export class MarkersPlugin extends BasePlugin {
 
         // hide out-of-bounds markers
         const ratio = marker.time / duration!;
-        if (ratio < 0.0 || ratio > 1.0) {
-            markerDiv.style.display = 'none';
-        }
+        markerDiv.style.display = (ratio < 0.0 || ratio > 1.0) ? 'none' : 'block';
 
         // set position
         markerDiv.style.left = (marker.time / duration!) * 100 + '%';
