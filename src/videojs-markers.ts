@@ -1,14 +1,11 @@
-import './videojs-markers.css';
-
-import type videoJs from 'video.js/dist/types/video';
+import videojs from 'video.js';
 import type Player from 'video.js/dist/types/player';
 import type Plugin from 'video.js/dist/types/plugin';
 
+import './videojs-markers.css';
 import { MarkerMap } from "./MarkerMap";
+import { PACKAGE_VERSION } from './version';
 
-// use videojs object from global context
-// @ts-ignore
-const videojs = globalThis['videojs'] as typeof videoJs;
 const BasePlugin = videojs.getPlugin('plugin') as typeof Plugin;
 
 export interface MarkerOptions {
@@ -41,7 +38,7 @@ export type Settings = {
  */
 export class MarkersPlugin extends BasePlugin {
 
-    public static readonly VERSION = '1.1.4';
+    public static readonly VERSION = PACKAGE_VERSION;
 
     private static readonly DEFAULT_SETTINGS: Settings = {
         markerStyle: {

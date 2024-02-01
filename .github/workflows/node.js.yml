@@ -33,4 +33,4 @@ jobs:
       - name: Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "./dist/videojs-markers.js, ./dist/videojs-markers.js.map, ./dist/videojs-markers.css, ./dist/types.d.ts, LICENSE-MIT"
+          artifacts: "./dist/, LICENSE"
