@@ -2,7 +2,7 @@
   "name": "@fffffffxxxxxxx/videojs-markers",
   "description": "video marker breaks plugin for video.js",
   "author": "FX",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "repository": "https://github.com/FFFFFFFXXXXXXX/videojs-markers",
   "type": "module",
   "files": [
@@ -12,7 +12,7 @@
   "types": "./dist/videojs-markers.d.ts",
   "scripts": {
     "prebuild": "node -p '`export const PACKAGE_VERSION = ${JSON.stringify(require(\"./package.json\").version)};`' > ./src/version.ts",
-    "build": "tsc"
+    "build": "tsc && cp ./src/videojs-markers.css ./dist/"
   },
   "peerDependencies": {
     "video.js": "^8.0.0"
