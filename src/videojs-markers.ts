@@ -1,8 +1,9 @@
+import './videojs-markers.css';
+
 import videojs from 'video.js';
 import type Player from 'video.js/dist/types/player';
 import type Plugin from 'video.js/dist/types/plugin';
 
-import './videojs-markers.css';
 import { MarkerMap } from "./MarkerMap";
 import { PACKAGE_VERSION } from './version';
 
