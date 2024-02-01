@@ -1,15 +1,13 @@
 {
-  "files": [
-    "./src/videojs-markers.ts",
-    "./src/MarkerMap.ts"
-  ],
+  "include": ["./src/*"],
   "compilerOptions": {
-    /* Types */
-    "target": "ES2015",
-    "module": "CommonJS",
-    "lib": ["ES2015", "dom"],
+    /* Project */
+    "target": "ES2020",
+    "lib": ["ES2020", "dom"],
+    "module": "ES2020",
+    "moduleResolution": "bundler",
     /* Emit */
-    "noEmit": true,
+    "outDir": "./dist/",
     "declaration": true, /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
     "newLine": "lf", /* Set the newline character for emitting files. */
     /* Interop Constraints */

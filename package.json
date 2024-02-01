@@ -2,25 +2,22 @@
   "name": "@fffffffxxxxxxx/videojs-markers",
   "description": "video marker breaks plugin for video.js",
   "author": "FX",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "repository": "https://github.com/FFFFFFFXXXXXXX/videojs-markers",
-  "source": "./src/videojs-markers.ts",
-  "types": "./dist/types.d.ts",
-  "targets": {
-    "default": {
-      "context": "browser"
-    }
-  },
+  "type": "module",
+  "files": [
+    "./dist/"
+  ],
+  "main": "./dist/videojs-markers.js",
+  "types": "./dist/videojs-markers.d.ts",
   "scripts": {
-    "watch": "parcel watch",
-    "build": "parcel build"
+    "prebuild": "node -p '`export const PACKAGE_VERSION = ${JSON.stringify(require(\"./package.json\").version)};`' > ./src/version.ts",
+    "build": "tsc"
   },
   "peerDependencies": {
-    "video.js": "^8.10.0"
+    "video.js": "^8.0.0"
   },
   "devDependencies": {
-    "@parcel/packager-ts": "^2.11.0",
-    "@parcel/transformer-typescript-types": "^2.11.0",
-    "parcel": "^2.11.0"
+    "typescript": "^5.3.3"
   }
 }
