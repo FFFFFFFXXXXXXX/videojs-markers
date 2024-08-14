@@ -16,7 +16,7 @@ export interface MarkerOptions {
     class?: string,
 }
 export interface Unique { readonly id: string }
-export interface Marker extends MarkerOptions, Unique {}
+export interface Marker extends MarkerOptions, Unique { }
 
 export type Settings = {
     markerStyle: Partial<CSSStyleDeclaration>,
@@ -57,14 +57,12 @@ export class MarkersPlugin extends BasePlugin {
     private readonly markersMap: MarkerMap;
     private readonly markerTip: HTMLElement | null;
 
+    private readonly vjsTimeTooltip: HTMLDivElement | null;
+
     private remainingMarkers = new Array<Marker>();
     private visitedMarkers = new Array<Marker>();
 
     private id = 0;
-
-    private readonly boundCheckIfMarkerReached: Function | null = null;
-    private readonly boundUpdateMarkers: Function;
-    private readonly boundDebouncedFindRemainingMarkers: Function;
 
     constructor(player: Player, options: Settings) {
         super(player);
@@ -83,21 +81,20 @@ export class MarkersPlugin extends BasePlugin {
             this.markerTip = null;
         }
 
+        this.vjsTimeTooltip = player.$('.vjs-time-tooltip') as HTMLDivElement;
+
         if (this.settings.onMarkerReached) {
-            this.boundCheckIfMarkerReached = this.checkIfMarkerReached.bind(this);
-            this.player.on('timeupdate', this.boundCheckIfMarkerReached);
+            this.player.on('timeupdate', this.checkIfMarkerReached);
         }
 
         // adjust position of markers if the duration of the current video changes
-        this.boundUpdateMarkers = this.updateMarkers.bind(this);
-        this.player.on('durationchange', this.boundUpdateMarkers);
+        this.player.on('durationchange', this.updateMarkers);
 
         // update visited/remaining markers when the user clicks somewhere in the progress bar
-        this.boundDebouncedFindRemainingMarkers = videojs.fn.debounce(this.splitMarkers, 500).bind(this);
-        this.player.on('seeked', this.boundDebouncedFindRemainingMarkers);
+        this.player.on('seeked', this.splitMarkersDebounced);
     }
 
-    public getMarkers(): ReadonlyArray<Marker> {
+    public getMarkers = (): ReadonlyArray<Marker> => {
         return this.markersMap.orderedValues();
     }
 
@@ -106,7 +103,7 @@ export class MarkersPlugin extends BasePlugin {
      *
      * @returns true if successful and false if there is no next marker
      */
-    public next(): boolean {
+    public next = (): boolean => {
         const nextMarker = this.remainingMarkers.pop();
         if (nextMarker !== undefined) {
             this.player.currentTime(nextMarker.time);
@@ -122,7 +119,7 @@ export class MarkersPlugin extends BasePlugin {
      *
      * @returns true if successful and false if there is no previous marker
      */
-    public prev(): boolean {
+    public prev = (): boolean => {
         const prevMarker = this.visitedMarkers.pop();
         if (prevMarker !== undefined) {
             this.player.currentTime(prevMarker.time);
@@ -139,7 +136,7 @@ export class MarkersPlugin extends BasePlugin {
      * @param markerOptions
      * @returns An array of all added Markers ordered by 'time'
      */
-    public add(markerOptions: ReadonlyArray<MarkerOptions>) {
+    public add = (markerOptions: ReadonlyArray<MarkerOptions>) => {
         for (const marker of markerOptions.map(m => ({ ...m, id: this.newId() } as Marker))) {
             this.markersMap.add(marker);
             this.updateMarker(marker);
@@ -151,7 +148,7 @@ export class MarkersPlugin extends BasePlugin {
     /**
      * Remove all markers.
      */
-    public remove(markers: ReadonlyArray<Marker>) {
+    public remove = (markers: ReadonlyArray<Marker>) => {
         for (const marker of markers) {
             const markerDiv = this.player.$(`[data-marker-id='${marker.id}']`);
             if (markerDiv !== null) {
@@ -171,8 +168,8 @@ export class MarkersPlugin extends BasePlugin {
     /**
      * Remove all markers.
      */
-    public removeAll() {
-        this.player.$$('[data-marker-id]').forEach(node =>  {
+    public removeAll = () => {
+        this.player.$$('[data-marker-id]').forEach(node => {
             const markerDiv = node as HTMLElement;
             markerDiv.onclick = null;
             markerDiv.onmouseover = null;
@@ -189,7 +186,7 @@ export class MarkersPlugin extends BasePlugin {
      * Reloads all markers.
      * Call this function if you modified a Marker after adding it and you want to display that change.
      */
-    public updateMarkers() {
+    public updateMarkers = () => {
         // duration() only returns undefined if used as a setter
         const duration = this.player.duration()!;
         for (const marker of this.markersMap.values()) {
@@ -202,30 +199,32 @@ export class MarkersPlugin extends BasePlugin {
     /**
      * Unregister the plugin.
      */
-    public override dispose(): void {
+    public override dispose = () => {
         this.removeAll();
 
         if (this.settings.markerTip?.remove) {
             this.settings.markerTip.remove();
         }
 
-        if (this.boundCheckIfMarkerReached) {
-            this.player.off('timeupdate', this.boundCheckIfMarkerReached);
+        if (this.checkIfMarkerReached) {
+            this.player.off('timeupdate', this.checkIfMarkerReached);
         }
-        this.player.off('durationchange', this.boundUpdateMarkers);
-        this.player.off('seeked', this.boundDebouncedFindRemainingMarkers);
+        this.player.off('durationchange', this.updateMarkers);
+        this.player.off('seeked', this.splitMarkersDebounced);
 
         super.dispose();
     }
 
-    private splitMarkers() {
+    private splitMarkers = () => {
         const markers = this.markersMap.orderedValues();
         const nextBiggest = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
         this.remainingMarkers = markers.slice(nextBiggest).reverse();
         this.visitedMarkers = markers.slice(0, nextBiggest);
     }
 
-    private updateMarker(marker: Marker, duration?: number) {
+    private splitMarkersDebounced = videojs.fn.debounce(this.splitMarkers, 500);
+
+    private updateMarker = (marker: Marker, duration?: number) => {
         duration = duration ?? this.player.duration();
 
         // remove previous marker with the same id (if there is one)
@@ -268,7 +267,7 @@ export class MarkersPlugin extends BasePlugin {
         this.player.$('.vjs-progress-holder')?.appendChild(markerDiv);
     }
 
-    private markerClicked(event: MouseEvent) {
+    private markerClicked = (event: MouseEvent) => {
         event.stopPropagation();
         event.preventDefault();
 
@@ -284,7 +283,7 @@ export class MarkersPlugin extends BasePlugin {
         }
     }
 
-    private showMarkerTip(event: MouseEvent) {
+    private showMarkerTip = (event: MouseEvent) => {
         if (this.markerTip === null) return;
 
         // this function only gets used as an eventListeners for HTMLElements with an 'data-marker-id' attribute
@@ -300,15 +299,19 @@ export class MarkersPlugin extends BasePlugin {
         const markerDivBounding = videojs.dom.getBoundingClientRect(markerDiv);
         this.markerTip.style.marginLeft = ((markerDivBounding.width / 4) - (markerTipBounding.width / 2)) + 'px';
         this.markerTip.style.visibility = 'visible';
+
+        this.vjsTimeTooltip?.style.setProperty('visibility', 'hidden');
     }
 
-    private hideMarkerTip(_event: MouseEvent) {
+    private hideMarkerTip = (_event: MouseEvent) => {
+        this.vjsTimeTooltip?.style.setProperty('visibility', 'visible');
+
         if (this.markerTip !== null) {
             this.markerTip.style.visibility = 'hidden';
         }
     }
 
-    private checkIfMarkerReached() {
+    private checkIfMarkerReached = () => {
         if (this.markersMap.size === 0) return;
 
         const peekNextMarker = this.remainingMarkers[this.remainingMarkers.length - 1];
@@ -321,7 +324,7 @@ export class MarkersPlugin extends BasePlugin {
     /**
      * Returns a new unique id (for this plugin INSTANCE)
      */
-    private newId(): string {
+    private newId = (): string => {
         return (this.id++).toString();
     }
 
@@ -334,7 +337,7 @@ export class MarkersPlugin extends BasePlugin {
      * @param markers
      * @param time
      */
-    private static binarySearch(markers: ReadonlyArray<Marker>, time: number): number {
+    private static binarySearch = (markers: ReadonlyArray<Marker>, time: number): number => {
         type Slice = {
             from: number,
             to: number

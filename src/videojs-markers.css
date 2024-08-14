@@ -4,7 +4,7 @@
     bottom: 0;
     opacity: 1;
     height: 100%;
-    z-index: 2;
+    z-index: 10000;
     transition: opacity .2s ease;
     -webkit-transition: opacity .2s ease;
     -moz-transition: opacity .2s ease;
@@ -17,22 +17,22 @@
 .vjs-tip {
     visibility: hidden;
     display: block;
-    opacity: 0.8;
     padding: 5px;
     position: absolute;
     bottom: 14px;
-    z-index: 2;
+    z-index: 10000;
 }
 
 .vjs-tip .vjs-tip-arrow {
     background: url(data:image/gif;base64,R0lGODlhCQAJAIABAAAAAAAAACH5BAEAAAEALAAAAAAJAAkAAAIRjAOnwIrcDJxvwkplPtchVQAAOw==) no-repeat;
-    top: 0;
+    bottom: 0;
     left: 50%;
     margin-left: -4px;
     background-position: top;
     position: absolute;
     width: 10px;
     height: 5px;
+    transform: rotate(180deg);
 }
 
 .vjs-tip .vjs-tip-inner {
@@ -48,5 +48,5 @@
 
 .video-js .vjs-play-progress::before {
     /* needs to be bigger than the on .vjs-tip so the circle marking the current position in the progressbar is not covered by the markers */
-    z-index: 2147483647; /* max value */
+    z-index: 11000;
 }
