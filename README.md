@@ -39,7 +39,7 @@ npm run build
 ```
 
 ## History
-- 1.2.0
+- 1.2.1
   - bugfixes
 - 1.1.0
   - Rewrite as advanced videojs plugin
