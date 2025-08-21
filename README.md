@@ -39,6 +39,8 @@ npm run build
 ```
 
 ## History
+- 1.2.0
+  - bugfixes
 - 1.1.0
   - Rewrite as advanced videojs plugin
   - Add typescript types / typechecking

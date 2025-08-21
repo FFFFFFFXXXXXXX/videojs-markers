@@ -104,7 +104,14 @@ export class MarkersPlugin extends BasePlugin {
      * @returns true if successful and false if there is no next marker
      */
     public next = (): boolean => {
-        const nextMarker = this.remainingMarkers.pop();
+        const time = this.player.currentTime()!;
+
+        let nextMarker = this.remainingMarkers.pop();
+        while (nextMarker !== undefined && MarkersPlugin.timeEq(nextMarker.time, time)) {
+            this.visitedMarkers.push(nextMarker);
+            nextMarker = this.remainingMarkers.pop();
+        }
+
         if (nextMarker !== undefined) {
             this.player.currentTime(nextMarker.time);
             this.visitedMarkers.push(nextMarker);
@@ -120,7 +127,14 @@ export class MarkersPlugin extends BasePlugin {
      * @returns true if successful and false if there is no previous marker
      */
     public prev = (): boolean => {
-        const prevMarker = this.visitedMarkers.pop();
+        const time = this.player.currentTime()!;
+
+        let prevMarker = this.visitedMarkers.pop();
+        while (prevMarker !== undefined && MarkersPlugin.timeEq(prevMarker.time, time)) {
+            this.remainingMarkers.push(prevMarker);
+            prevMarker = this.visitedMarkers.pop();
+        }
+
         if (prevMarker !== undefined) {
             this.player.currentTime(prevMarker.time);
             this.remainingMarkers.push(prevMarker);
@@ -217,12 +231,12 @@ export class MarkersPlugin extends BasePlugin {
 
     private splitMarkers = () => {
         const markers = this.markersMap.orderedValues();
-        const nextBiggest = MarkersPlugin.binarySearch(markers, this.player.currentTime()!);
+        const nextBiggest = MarkersPlugin.binarySearchTime(markers, this.player.currentTime()!);
         this.remainingMarkers = markers.slice(nextBiggest).reverse();
         this.visitedMarkers = markers.slice(0, nextBiggest);
     }
 
-    private splitMarkersDebounced = videojs.fn.debounce(this.splitMarkers, 500);
+    private splitMarkersDebounced = videojs.fn.debounce(this.splitMarkers, 250);
 
     private updateMarker = (marker: Marker, duration?: number) => {
         duration = duration ?? this.player.duration();
@@ -312,12 +326,19 @@ export class MarkersPlugin extends BasePlugin {
     }
 
     private checkIfMarkerReached = () => {
-        if (this.markersMap.size === 0) return;
+        const time = this.player.currentTime()!;
 
-        const peekNextMarker = this.remainingMarkers[this.remainingMarkers.length - 1];
-        if (peekNextMarker !== undefined && (peekNextMarker.time - this.player.currentTime()!) < 0.0) {
-            this.visitedMarkers.push(this.remainingMarkers.pop()!);
-            this.settings.onMarkerReached!(peekNextMarker);
+        let nextMarker = this.remainingMarkers.pop();
+        while (nextMarker !== undefined) {
+            if (nextMarker.time - time < 0) {
+                this.visitedMarkers.push(nextMarker);
+                this.settings.onMarkerReached!({ ...nextMarker });
+            } else {
+                this.remainingMarkers.push(nextMarker);
+                return;
+            }
+
+            nextMarker = this.remainingMarkers.pop();
         }
     }
 
@@ -337,24 +358,37 @@ export class MarkersPlugin extends BasePlugin {
      * @param markers
      * @param time
      */
-    private static binarySearch = (markers: ReadonlyArray<Marker>, time: number): number => {
-        type Slice = {
-            from: number,
-            to: number
-        }
+    private static binarySearchTime = (markers: ReadonlyArray<Marker>, time: number): number => {
+        let start = 0;
+        let end = markers.length;
 
-        const slice: Slice = { from: 0, to: markers.length };
-        while (slice.from !== slice.to) {
-            const middle = (slice.from + slice.to) >> 1;
-            if (time > markers[middle]!.time) {
-                slice.from = middle + 1;
-            } else if (time < markers[middle]!.time) {
-                slice.to = middle;
-            } else {
-                return middle + 1;
+        while (start !== end) {
+            const middle = (start + end) >> 1;
+            switch (this.timeCmp(time, markers[middle]!.time)) {
+                case -1:
+                    end = middle;
+                    break;
+                case 1:
+                    start = middle + 1;
+                    break;
+                case 0:
+                    return middle + 1;
             }
         }
-        return slice.to;
+
+        return end;
+    }
+    
+    private static timeCmp(n1: number, n2: number): -1 | 0 | 1 {
+        if (this.timeEq(n1, n2)) {
+            return 0;
+        } else {
+            return n1 < n2 ? -1 : 1;
+        }
+    }
+
+    private static timeEq(n1: number, n2: number): boolean {
+        return Math.abs(n1 - n2) < 0.001
     }
 
 }
